@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Firdeus · Record the prayer</title>
+<link rel="icon" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri&display=swap">
+<link rel="stylesheet" href="style.css">
+<style>
+  .clip { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px; margin: 14px 0; }
+  .clip.done { border-color: var(--primary); }
+  .clip.recording { border-color: #c0392b; box-shadow: 0 0 0 3px rgba(192,57,43,.18); }
+  .group { color: var(--gold); font-weight: 700; font-size: 14px; display: flex; justify-content: space-between; gap: 8px; }
+  .tick { color: var(--primary); }
+  .ar { font-family: "Amiri", "Traditional Arabic", serif; font-size: 30px; line-height: 1.8; direction: rtl; text-align: right; margin: 6px 0 2px; }
+  .tr { color: var(--primary); font-style: italic; }
+  .mn { color: var(--muted); font-size: 15px; }
+  .once { color: var(--gold); font-size: 14px; margin-top: 4px; }
+  .row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+  button { font: inherit; font-size: 15px; font-weight: 600; border: 0; border-radius: 12px; padding: 10px 16px; cursor: pointer; }
+  .rec { background: #c0392b; color: #fff; }
+  .soft { background: #dcebe5; color: #0f5c4a; }
+  .primary { background: var(--primary); color: #fff; }
+  button:disabled { opacity: .45; cursor: default; }
+  .timer { color: #c0392b; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .bar > div { height: 8px; background: var(--primary); width: 0; transition: width .3s; }
+  .sticky { position: sticky; top: 0; background: var(--bg); padding: 10px 0; z-index: 2; }
+  .err { color: #c0392b; }
+</style>
+</head>
+<body>
+<main>
+  <header class="site">
+    <img src="icon.png" alt="">
+    <a href="./">Firdeus</a>
+  </header>
+
+  <h1>Record the words of the prayer</h1>
+  <p>Jazakallahu khayran for helping. These recordings will teach new Muslims to say every word of the prayer,
+  line by line, until they know it by heart.</p>
+
+  <div class="card">
+    <strong>Before you start</strong>
+    <ul>
+      <li>A quiet room. Hold the phone about 20 cm from your mouth.</li>
+      <li>Recite slowly and clearly, the way you would teach a beginner, with correct tajwid.</li>
+      <li>Say each line <strong>once</strong>, then press Stop. Leave a short moment of silence at the start and end.</li>
+      <li>Listen back. If you are not happy, press Record again to redo it.</li>
+      <li>Your recordings are kept on this phone until you send them, so you can stop and continue later.</li>
+    </ul>
+  </div>
+
+  <div class="sticky">
+    <div class="group" style="color:var(--text)"><span id="count">0 of 0 recorded</span><span id="saved" class="muted"></span></div>
+    <div class="bar"><div id="bar"></div></div>
+  </div>
+  <p id="micerr" class="err" hidden></p>
+
+  <div id="list"></div>
+
+  <div class="card" id="send">
+    <strong>Send the recordings</strong>
+    <p class="mn" id="sendhint">When every line is recorded, send them all in one go. You can also send what you have so far.</p>
+    <div class="row">
+      <button class="primary" id="share">Share recordings</button>
+      <button class="soft" id="download">Download as a zip</button>
+    </div>
+    <p class="mn">Send them to <a href="mailto:selam@firdeus.studio">selam@firdeus.studio</a>, or by WhatsApp to the person who gave you this link.</p>
+  </div>
+
+  <footer>Firdeus · a free app, made for the sake of Allah.</footer>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+const CLIPS = [{"name": "takbir", "group": "Takbir", "part": "", "arabic": "اللَّهُ أَكْبَرُ", "translit": "Allahu Akbar", "meaning": "Allah is the Greatest", "once": ""}, {"name": "opening-1", "group": "Opening du‘a", "part": "Line 1 of 4", "arabic": "سُبْحَانَكَ اللَّهُمَّ وَبِحَمْدِكَ", "translit": "Subhanakallahumma wa bihamdik", "meaning": "Glory be to You, O Allah, and praise,", "once": ""}, {"name": "opening-2", "group": "Opening du‘a", "part": "Line 2 of 4", "arabic": "وَتَبَارَكَ اسْمُكَ", "translit": "wa tabarakasmuk", "meaning": "blessed is Your name,", "once": ""}, {"name": "opening-3", "group": "Opening du‘a", "part": "Line 3 of 4", "arabic": "وَتَعَالَىٰ جَدُّكَ", "translit": "wa ta‘ala jadduk", "meaning": "exalted is Your majesty,", "once": ""}, {"name": "opening-4", "group": "Opening du‘a", "part": "Line 4 of 4", "arabic": "وَلَا إِلَٰهَ غَيْرُكَ", "translit": "wa la ilaha ghayruk", "meaning": "and there is no god but You.", "once": ""}, {"name": "taawwudh", "group": "Seeking refuge", "part": "", "arabic": "أَعُوذُ بِاللَّهِ مِنَ الشَّيْطَانِ الرَّجِيمِ", "translit": "A‘udhu billahi minash-shaytanir-rajim", "meaning": "I seek refuge in Allah from Satan, the accursed.", "once": ""}, {"name": "amin", "group": "After Al-Fatihah", "part": "", "arabic": "آمِين", "translit": "Amin", "meaning": "O Allah, answer.", "once": ""}, {"name": "ruku", "group": "In ruku‘", "part": "", "arabic": "سُبْحَانَ رَبِّيَ الْعَظِيمِ", "translit": "Subhana Rabbiyal-‘Azim", "meaning": "Glory be to my Lord, the Most Great.", "once": "Say it once only (the app repeats it 3 times)"}, {"name": "sami", "group": "Rising", "part": "", "arabic": "سَمِعَ اللَّهُ لِمَنْ حَمِدَهُ", "translit": "Sami‘allahu liman hamidah", "meaning": "Allah hears the one who praises Him.", "once": ""}, {"name": "rabbana", "group": "Standing straight", "part": "", "arabic": "رَبَّنَا وَلَكَ الْحَمْدُ", "translit": "Rabbana wa lakal-hamd", "meaning": "Our Lord, and to You belongs all praise.", "once": ""}, {"name": "sujud", "group": "In sujud", "part": "", "arabic": "سُبْحَانَ رَبِّيَ الْأَعْلَىٰ", "translit": "Subhana Rabbiyal-A‘la", "meaning": "Glory be to my Lord, the Most High.", "once": "Say it once only (the app repeats it 3 times)"}, {"name": "jalsa", "group": "Between the prostrations", "part": "", "arabic": "رَبِّ اغْفِرْ لِي", "translit": "Rabbighfir li", "meaning": "My Lord, forgive me.", "once": ""}, {"name": "tashahhud-1", "group": "Tashahhud", "part": "Line 1 of 5", "arabic": "التَّحِيَّاتُ لِلَّهِ وَالصَّلَوَاتُ وَالطَّيِّبَاتُ", "translit": "At-tahiyyatu lillahi was-salawatu wat-tayyibat", "meaning": "All greetings, prayers and good things are for Allah.", "once": ""}, {"name": "tashahhud-2", "group": "Tashahhud", "part": "Line 2 of 5", "arabic": "السَّلَامُ عَلَيْكَ أَيُّهَا النَّبِيُّ وَرَحْمَةُ اللَّهِ وَبَرَكَاتُهُ", "translit": "As-salamu ‘alayka ayyuhan-Nabiyyu wa rahmatullahi wa barakatuh", "meaning": "Peace be upon you, O Prophet, and the mercy of Allah and His blessings.", "once": ""}, {"name": "tashahhud-3", "group": "Tashahhud", "part": "Line 3 of 5", "arabic": "السَّلَامُ عَلَيْنَا وَعَلَىٰ عِبَادِ اللَّهِ الصَّالِحِينَ", "translit": "As-salamu ‘alayna wa ‘ala ‘ibadillahis-salihin", "meaning": "Peace be upon us and upon the righteous servants of Allah.", "once": ""}, {"name": "tashahhud-4", "group": "Tashahhud", "part": "Line 4 of 5", "arabic": "أَشْهَدُ أَنْ لَا إِلَٰهَ إِلَّا اللَّهُ", "translit": "Ashhadu an la ilaha illallah", "meaning": "I bear witness that there is no god but Allah,", "once": ""}, {"name": "tashahhud-5", "group": "Tashahhud", "part": "Line 5 of 5", "arabic": "وَأَشْهَدُ أَنَّ مُحَمَّدًا عَبْدُهُ وَرَسُولُهُ", "translit": "wa ashhadu anna Muhammadan ‘abduhu wa rasuluh", "meaning": "and I bear witness that Muhammad is His servant and Messenger.", "once": ""}, {"name": "salawat-1", "group": "Blessings on the Prophet ﷺ", "part": "Line 1 of 4", "arabic": "اللَّهُمَّ صَلِّ عَلَىٰ مُحَمَّدٍ وَعَلَىٰ آلِ مُحَمَّدٍ", "translit": "Allahumma salli ‘ala Muhammadin wa ‘ala ali Muhammad", "meaning": "O Allah, send prayers upon Muhammad and the family of Muhammad,", "once": ""}, {"name": "salawat-2", "group": "Blessings on the Prophet ﷺ", "part": "Line 2 of 4", "arabic": "كَمَا صَلَّيْتَ عَلَىٰ إِبْرَاهِيمَ وَعَلَىٰ آلِ إِبْرَاهِيمَ، إِنَّكَ حَمِيدٌ مَجِيدٌ", "translit": "kama sallayta ‘ala Ibrahima wa ‘ala ali Ibrahim, innaka Hamidun Majid", "meaning": "as You sent prayers upon Ibrahim and the family of Ibrahim; You are Praiseworthy, Glorious.", "once": ""}, {"name": "salawat-3", "group": "Blessings on the Prophet ﷺ", "part": "Line 3 of 4", "arabic": "اللَّهُمَّ بَارِكْ عَلَىٰ مُحَمَّدٍ وَعَلَىٰ آلِ مُحَمَّدٍ", "translit": "Allahumma barik ‘ala Muhammadin wa ‘ala ali Muhammad", "meaning": "O Allah, bless Muhammad and the family of Muhammad,", "once": ""}, {"name": "salawat-4", "group": "Blessings on the Prophet ﷺ", "part": "Line 4 of 4", "arabic": "كَمَا بَارَكْتَ عَلَىٰ إِبْرَاهِيمَ وَعَلَىٰ آلِ إِبْرَاهِيمَ، إِنَّكَ حَمِيدٌ مَجِيدٌ", "translit": "kama barakta ‘ala Ibrahima wa ‘ala ali Ibrahim, innaka Hamidun Majid", "meaning": "as You blessed Ibrahim and the family of Ibrahim; You are Praiseworthy, Glorious.", "once": ""}, {"name": "salam", "group": "Taslim", "part": "", "arabic": "السَّلَامُ عَلَيْكُمْ وَرَحْمَةُ اللَّهِ", "translit": "As-salamu ‘alaykum wa rahmatullah", "meaning": "Peace be upon you and the mercy of Allah.", "once": ""}, {"name": "istighfar", "group": "Seeking forgiveness", "part": "", "arabic": "أَسْتَغْفِرُ اللَّهَ", "translit": "Astaghfirullah", "meaning": "I seek the forgiveness of Allah.", "once": "Say it once only (the app repeats it 3 times)"}, {"name": "antassalam-1", "group": "After the prayer", "part": "Line 1 of 2", "arabic": "اللَّهُمَّ أَنْتَ السَّلَامُ وَمِنْكَ السَّلَامُ", "translit": "Allahumma antas-salam wa minkas-salam", "meaning": "O Allah, You are Peace and from You comes peace.", "once": ""}, {"name": "antassalam-2", "group": "After the prayer", "part": "Line 2 of 2", "arabic": "تَبَارَكْتَ يَا ذَا الْجَلَالِ وَالْإِكْرَامِ", "translit": "tabarakta ya dhal-jalali wal-ikram", "meaning": "Blessed are You, O Possessor of majesty and honour.", "once": ""}];
+
+// ---- storage: keep recordings on this phone until they are sent ----
+const DB = 'firdeus-recordings';
+function idb() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(DB, 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('clips');
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function put(name, blob) {
+  const db = await idb();
+  return new Promise((res, rej) => { const t = db.transaction('clips', 'readwrite'); t.objectStore('clips').put(blob, name); t.oncomplete = res; t.onerror = () => rej(t.error); });
+}
+async function getAll() {
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const out = {}; const t = db.transaction('clips'); const s = t.objectStore('clips');
+    const c = s.openCursor();
+    c.onsuccess = () => { const cur = c.result; if (cur) { out[cur.key] = cur.value; cur.continue(); } else res(out); };
+    c.onerror = () => rej(c.error);
+  });
+}
+
+const recordings = {};
+let stream = null, recorder = null, active = null, startedAt = 0, tick = null;
+
+function mime() {
+  const types = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'];
+  for (const t of types) if (window.MediaRecorder && MediaRecorder.isTypeSupported(t)) return t;
+  return '';
+}
+function ext(type) { return type.includes('mp4') ? 'm4a' : type.includes('ogg') ? 'ogg' : 'webm'; }
+
+function el(tag, attrs = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) { if (k === 'class') e.className = v; else if (k.startsWith('on')) e.addEventListener(k.slice(2), v); else e.setAttribute(k, v); }
+  for (const k of kids) if (k != null) e.append(k);
+  return e;
+}
+
+function render() {
+  const list = document.getElementById('list');
+  list.textContent = '';
+  CLIPS.forEach((c) => {
+    const has = !!recordings[c.name];
+    const isRec = active === c.name;
+    const card = el('div', { class: 'clip' + (has ? ' done' : '') + (isRec ? ' recording' : ''), id: 'clip-' + c.name },
+      el('div', { class: 'group' }, el('span', {}, c.group + (c.part ? ' · ' + c.part : '')), has ? el('span', { class: 'tick' }, '✓ recorded') : null),
+      el('div', { class: 'ar' }, c.arabic),
+      el('div', { class: 'tr' }, c.translit),
+      c.meaning ? el('div', { class: 'mn' }, c.meaning) : null,
+      c.once ? el('div', { class: 'once' }, c.once) : null,
+    );
+    const row = el('div', { class: 'row' });
+    if (isRec) {
+      row.append(el('button', { class: 'rec', onclick: stop }, '■ Stop'), el('span', { class: 'timer', id: 'timer' }, '0:00'));
+    } else {
+      row.append(el('button', { class: has ? 'soft' : 'rec', onclick: () => start(c.name), disabled: active ? '' : null }, has ? '↻ Record again' : '● Record'));
+      if (has) row.append(el('button', { class: 'soft', onclick: () => play(c.name), disabled: active ? '' : null }, '▶ Listen'));
+    }
+    // a disabled attribute of null should not disable
+    row.querySelectorAll('button').forEach((b) => { if (b.getAttribute('disabled') === 'null') b.removeAttribute('disabled'); });
+    card.append(row);
+    list.append(card);
+  });
+  const n = CLIPS.filter((c) => recordings[c.name]).length;
+  document.getElementById('count').textContent = `${n} of ${CLIPS.length} recorded`;
+  document.getElementById('bar').style.width = (n / CLIPS.length) * 100 + '%';
+  document.getElementById('share').disabled = n === 0;
+  document.getElementById('download').disabled = n === 0;
+  document.getElementById('sendhint').textContent = n === CLIPS.length
+    ? 'Masha’Allah, every line is recorded. Send them all in one go.'
+    : 'When every line is recorded, send them all in one go. You can also send what you have so far.';
+}
+
+async function start(name) {
+  const err = document.getElementById('micerr');
+  try {
+    if (!stream) stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: true } });
+  } catch (e) {
+    err.hidden = false;
+    err.textContent = 'The microphone is not available. Please allow microphone access for this page in your browser, then try again.';
+    return;
+  }
+  err.hidden = true;
+  const type = mime();
+  recorder = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+  const chunks = [];
+  recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+  recorder.onstop = async () => {
+    const blob = new Blob(chunks, { type: recorder.mimeType || type || 'audio/webm' });
+    recordings[name] = blob;
+    active = null;
+    clearInterval(tick);
+    render();
+    try { await put(name, blob); document.getElementById('saved').textContent = 'Saved on this phone'; } catch {}
+    // move on to the next line that still needs recording
+    const next = CLIPS.find((c) => !recordings[c.name]);
+    if (next) document.getElementById('clip-' + next.name).scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+  active = name;
+  startedAt = Date.now();
+  recorder.start();
+  render();
+  tick = setInterval(() => {
+    const s = Math.floor((Date.now() - startedAt) / 1000);
+    const t = document.getElementById('timer');
+    if (t) t.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }, 250);
+}
+function stop() { if (recorder && recorder.state !== 'inactive') recorder.stop(); }
+
+let player = null;
+function play(name) {
+  if (player) player.pause();
+  player = new Audio(URL.createObjectURL(recordings[name]));
+  player.play();
+}
+
+async function zip() {
+  const z = new JSZip();
+  for (const c of CLIPS) {
+    const b = recordings[c.name];
+    if (b) z.file(`${c.name}.${ext(b.type)}`, b);
+  }
+  return z.generateAsync({ type: 'blob' });
+}
+document.getElementById('download').addEventListener('click', async () => {
+  const blob = await zip();
+  const a = el('a', { href: URL.createObjectURL(blob), download: 'firdeus-recordings.zip' });
+  document.body.append(a); a.click(); a.remove();
+});
+document.getElementById('share').addEventListener('click', async () => {
+  const blob = await zip();
+  const file = new File([blob], 'firdeus-recordings.zip', { type: 'application/zip' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: 'Firdeus prayer recordings' }); } catch {}
+  } else {
+    const a = el('a', { href: URL.createObjectURL(blob), download: 'firdeus-recordings.zip' });
+    document.body.append(a); a.click(); a.remove();
+  }
+});
+
+if (!window.MediaRecorder) {
+  const err = document.getElementById('micerr');
+  err.hidden = false;
+  err.textContent = 'This browser cannot record. Please open this page in Chrome or Safari on your phone.';
+}
+getAll().then((all) => { Object.assign(recordings, all); render(); }).catch(render);
+render();
+</script>
+</body>
+</html>
